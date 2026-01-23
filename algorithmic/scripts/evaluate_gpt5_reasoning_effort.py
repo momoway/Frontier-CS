@@ -122,7 +122,7 @@ class AlgorithmicJudgeClient:
             print(f"Error submitting solution for problem {problem_id}: {e}")
             return None
 
-    def get_result(self, submission_id: str, poll_interval: float = 2.0, max_wait: float = 300.0) -> Dict:
+    def get_result(self, submission_id: str, poll_interval: float = 2.0, max_wait: float = 1200.0) -> Dict:
         """Poll for submission result."""
         start_time = time.time()
         while time.time() - start_time < max_wait:
