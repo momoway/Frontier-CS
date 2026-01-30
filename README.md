@@ -40,10 +40,13 @@ Current benchmarks are becoming too easy. Models score 90%+ on many existing cod
 | Evaluation | Binary pass-or-fail                        | _Verifiable_ continuous scoring, always room to improve |
 | Scope      | Usually one domain                         | _Diverse_: systems, ML, algorithms, security, and more  |
 
-**[Leaderboard →](https://frontier-cs.org/leaderboard)** | Browse example problems at [frontier-cs.org](https://frontier-cs.org)
+## 🏆 Leaderboard Snapshot (01/29/2026)
 
-<details open>
-<summary><b>Algorithmic Track (172 problems)</b></summary>
+Score@k = best-of-k runs; Avg@k = average over k runs; Elo uses Bradley–Terry from single-attempt performance (difficulty-normalized).
+
+
+<a id="algorithmic-track"></a>
+### Algorithmic Track (172 problems)
 
 | Rank | Model | Score@1 | Avg@5 | Score@5 | Elo |
 |:---:|---|---:|---:|---:|---:|
@@ -52,12 +55,13 @@ Current benchmarks are becoming too easy. Models score 90%+ on many existing cod
 | 🥉 | GPT 5 Thinking | 23.10 | 22.58 | 39.73 | 1196 |
 | 4 | DeepSeek 3.2 | 24.83 | 23.89 | 41.44 | 1193 |
 | 5 | Grok 4 | 24.04 | 22.98 | 36.81 | 1174 |
+| 6 | Gemini 2.5 Pro | 20.34 | 19.32 | 36.65 | 1167 |
+| 7 | GPT 5.1 Thinking | 20.64 | 21.49 | 34.76 | 1164 |
 
-<sub>Human reference: <b>86.99</b> (Score@1).</sub>
-</details>
+**Human reference: <b>86.99</b> (Score@1).**
 
-<details open>
-<summary><b>Research Track (68 problems)</b></summary>
+<a id="research-track"></a>
+### Research Track (68 problems)
 
 | Rank | Model | Score@1 | Avg@5 | Score@5 | Elo |
 |:---:|---|---:|---:|---:|---:|
@@ -66,7 +70,9 @@ Current benchmarks are becoming too easy. Models score 90%+ on many existing cod
 | 🥉 | GPT 5.1 Thinking | 32.12 | 33.70 | 56.79 | 1214 |
 | 4 | GPT 5.2 Thinking | 30.29 | 34.09 | 58.90 | 1210 |
 | 5 | Gemini 2.5 Pro | 21.66 | 25.74 | 51.57 | 1180 |
-</details>
+| 6 | Grok 4 | 26.75 | 24.01 | 48.15 | 1149 |
+| 7 | DeepSeek 3.2 | 21.51 | 21.76 | 44.41 | 1146 |
+
 
 ## Getting Started
 
