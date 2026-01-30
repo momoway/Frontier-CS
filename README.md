@@ -10,7 +10,6 @@ Evolving Challenges for Evolving Intelligence
 
 <p align="center">
   <a href="https://frontier-cs.org"><img src="https://img.shields.io/badge/Website-frontier--cs.org-orange?logo=googlechrome" alt="Website"></a>
-  <a href="https://frontier-cs.org/leaderboard"><img src="https://img.shields.io/badge/Leaderboard-View_Rankings-purple?logo=trophy" alt="Leaderboard"></a>
   <a href="https://discord.gg/k4hd2nU4UE"><img src="https://img.shields.io/badge/Discord-Join_Community-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   <a href="https://deepwiki.com/FrontierCS/Frontier-CS"><img src="https://img.shields.io/badge/DeepWiki-Documentation-blue?logo=bookstack&logoColor=white" alt="DeepWiki"></a>
   <br>
@@ -42,6 +41,32 @@ Current benchmarks are becoming too easy. Models score 90%+ on many existing cod
 | Scope      | Usually one domain                         | _Diverse_: systems, ML, algorithms, security, and more  |
 
 **[Leaderboard →](https://frontier-cs.org/leaderboard)** | Browse example problems at [frontier-cs.org](https://frontier-cs.org)
+
+<details open>
+<summary><b>Algorithmic Track (172 problems)</b></summary>
+
+| Rank | Model | Score@1 | Avg@5 | Score@5 | Elo |
+|:---:|---|---:|---:|---:|---:|
+| 🥇 | Gemini 3.0 Pro | **33.12** | **34.58** | **56.09** | **1265** |
+| 🥈 | GPT 5.2 Thinking | 32.40 | 33.11 | 47.19 | 1242 |
+| 🥉 | GPT 5 Thinking | 23.10 | 22.58 | 39.73 | 1196 |
+| 4 | DeepSeek 3.2 | 24.83 | 23.89 | 41.44 | 1193 |
+| 5 | Grok 4 | 24.04 | 22.98 | 36.81 | 1174 |
+
+<sub>Human reference: <b>86.99</b> (Score@1).</sub>
+</details>
+
+<details open>
+<summary><b>Research Track (68 problems)</b></summary>
+
+| Rank | Model | Score@1 | Avg@5 | Score@5 | Elo |
+|:---:|---|---:|---:|---:|---:|
+| 🥇 | Gemini 3.0 Pro | **46.55** | **43.14** | **59.22** | **1283** |
+| 🥈 | GPT 5 Thinking | 30.91 | 34.94 | 55.25 | 1218 |
+| 🥉 | GPT 5.1 Thinking | 32.12 | 33.70 | 56.79 | 1214 |
+| 4 | GPT 5.2 Thinking | 30.29 | 34.09 | 58.90 | 1210 |
+| 5 | Gemini 2.5 Pro | 21.66 | 25.74 | 51.57 | 1180 |
+</details>
 
 ## Getting Started
 
@@ -175,3 +200,10 @@ If you use Frontier-CS in your research, please cite:
       url={https://arxiv.org/abs/2512.15699},
 }
 ```
+
+
+| Rank | Model | Score |
+|------|-------|-------|
+| 1 | GPT-5 | 95.5 |
+| 2 | Claude-3 | 92.3 |
+| 3 | Gemini-1.5 | 88.7 |

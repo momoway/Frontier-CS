@@ -1,0 +1,60 @@
+{
+  "track": "research",
+  "metrics": {
+    "Score@1": "highest score achieved in a single run",
+    "Avg@5": "average score over 5 runs",
+    "Score@5": "highest score achieved across 5 runs",
+    "Elo": "Bradley-Terry rating based on single-attempt performance"
+  },
+  "entries": [
+    {
+      "model": "Gemini 3.0 Pro",
+      "score_at_1": 46.55,
+      "avg_at_5": 43.14,
+      "score_at_5": 59.22,
+      "elo": 1283
+    },
+    {
+      "model": "GPT 5 Thinking",
+      "score_at_1": 30.91,
+      "avg_at_5": 34.94,
+      "score_at_5": 55.25,
+      "elo": 1218
+    },
+    {
+      "model": "GPT 5.1 Thinking",
+      "score_at_1": 32.12,
+      "avg_at_5": 33.70,
+      "score_at_5": 56.79,
+      "elo": 1214
+    },
+    {
+      "model": "GPT 5.2 Thinking",
+      "score_at_1": 30.29,
+      "avg_at_5": 34.09,
+      "score_at_5": 58.90,
+      "elo": 1210
+    },
+    {
+      "model": "Gemini 2.5 Pro",
+      "score_at_1": 21.66,
+      "avg_at_5": 25.74,
+      "score_at_5": 51.57,
+      "elo": 1180
+    },
+    {
+      "model": "Grok 4",
+      "score_at_1": 26.75,
+      "avg_at_5": 24.01,
+      "score_at_5": 48.15,
+      "elo": 1149
+    },
+    {
+      "model": "DeepSeek 3.2",
+      "score_at_1": 21.51,
+      "avg_at_5": 21.76,
+      "score_at_5": 44.41,
+      "elo": 1146
+    }
+  ]
+}
