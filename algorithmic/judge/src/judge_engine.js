@@ -15,13 +15,97 @@ export class JudgeEngine {
         this.submissionManager = config.submissionManager;
         this.testlibPath = config.testlibPath || '/lib/testlib';
         this.saveOutputs = process.env.SAVE_OUTPUTS === 'true';
-        
+
         // In-memory queue and results
         this.queue = [];
         this.results = new Map();
-        
+
+        // Cache for compiled checkers/interactors (pid -> { checkerId, interactorId })
+        // Avoids recompiling the same checker for every submission
+        this.checkerCache = new Map();
+        this.checkerCompiling = new Map();  // pid -> Promise (for concurrent compile protection)
+
         // Start worker threads
         this.startWorkers(config.workers || 4);
+    }
+
+    // Get or compile checker with caching
+    async getOrCompileChecker(pid, problem) {
+        // Check cache first
+        if (this.checkerCache.has(pid)) {
+            return this.checkerCache.get(pid);
+        }
+
+        // Check if another worker is already compiling this checker
+        if (this.checkerCompiling.has(pid)) {
+            return await this.checkerCompiling.get(pid);
+        }
+
+        // Start compiling and store the promise
+        const compilePromise = this._compileChecker(pid, problem);
+        this.checkerCompiling.set(pid, compilePromise);
+
+        try {
+            const result = await compilePromise;
+            this.checkerCache.set(pid, result);
+            return result;
+        } finally {
+            this.checkerCompiling.delete(pid);
+        }
+    }
+
+    async _compileChecker(pid, problem) {
+        const checkerBinPath = path.join(problem.pdir, `${problem.checker}.bin`);
+
+        if (await fileExists(checkerBinPath)) {
+            const result = await this.goJudge.copyInBin(checkerBinPath);
+            return { checkerId: result.binId, cleanup: null };  // Don't cleanup cached checkers
+        } else if (problem.checker) {
+            const chkSrc = await this.problemManager.readCheckerSource(pid, problem.checker);
+            const result = await this.goJudge.prepareChecker(chkSrc, this.testlibPath);
+            return { checkerId: result.checkerId, cleanup: null };  // Don't cleanup cached checkers
+        }
+
+        throw new Error(`No checker found for problem ${pid}`);
+    }
+
+    // Get or compile interactor with caching
+    async getOrCompileInteractor(pid, problem) {
+        const cacheKey = `interactor:${pid}`;
+
+        if (this.checkerCache.has(cacheKey)) {
+            return this.checkerCache.get(cacheKey);
+        }
+
+        if (this.checkerCompiling.has(cacheKey)) {
+            return await this.checkerCompiling.get(cacheKey);
+        }
+
+        const compilePromise = this._compileInteractor(pid, problem);
+        this.checkerCompiling.set(cacheKey, compilePromise);
+
+        try {
+            const result = await compilePromise;
+            this.checkerCache.set(cacheKey, result);
+            return result;
+        } finally {
+            this.checkerCompiling.delete(cacheKey);
+        }
+    }
+
+    async _compileInteractor(pid, problem) {
+        const interactorBinPath = path.join(problem.pdir, `${problem.interactor}.bin`);
+
+        if (await fileExists(interactorBinPath)) {
+            const result = await this.goJudge.copyInBin(interactorBinPath);
+            return { interactorId: result.binId, cleanup: null };
+        } else if (problem.interactor) {
+            const interSrc = await this.problemManager.readInteractorSource(pid, problem.interactor);
+            const result = await this.goJudge.prepareInteractor(interSrc, this.testlibPath);
+            return { interactorId: result.interactorId, cleanup: null };
+        }
+
+        throw new Error(`No interactor found for problem ${pid}`);
     }
 
     // Submit a task
@@ -227,23 +311,13 @@ export class JudgeEngine {
 
     async judgeDefault(problem, sid, pid, lang, code, subDir) {
         let cleanupIds = [];
-        let checkerCleanup, checkerId;
         try {
             // Prepare contestant's program
             const runSpec = await this.goJudge.prepareProgram({ lang, code, mainName: problem.filename || null });
             cleanupIds.push(...(runSpec.cleanupIds || []));
 
-            // Prepare checker
-            const checkerBinPath = path.join(problem.pdir, `${problem.checker}.bin`);
-            let checkerResult;
-            if (await fileExists(checkerBinPath)) {
-                checkerResult = await this.goJudge.copyInBin(checkerBinPath);
-            } else if (problem.checker) {
-                const chkSrc = await this.problemManager.readCheckerSource(pid, problem.checker);
-                checkerResult = await this.goJudge.prepareChecker(chkSrc, this.testlibPath);
-            }
-            checkerId = checkerResult.binId || checkerResult.checkerId;
-            checkerCleanup = checkerResult.cleanup;
+            // Get cached or compile checker (with concurrent compile protection)
+            const { checkerId } = await this.getOrCompileChecker(pid, problem);
 
             // Run all cases
             let totalScore = 0;
@@ -299,28 +373,20 @@ export class JudgeEngine {
             this.results.set(sid, err);
             await fs.writeFile(path.join(subDir, 'result.json'), JSON.stringify(err, null, 2));
         } finally {
+            // Only cleanup contestant's program, not the cached checker
             for (const id of cleanupIds) await this.goJudge.deleteFile(id);
-            if (checkerCleanup) await checkerCleanup();
         }
     }
 
     async judgeInteractive(problem, sid, pid, lang, code, subDir) {
         let cleanupIds = [];
-        let interactorCleanup, interactorId;
         try {
-            // Prepare program and interactor
+            // Prepare program
             const runSpec = await this.goJudge.prepareProgram({ lang, code, mainName: problem.filename || null });
             cleanupIds.push(...(runSpec.cleanupIds || []));
-            const interactorBinPath = path.join(problem.pdir, `${problem.interactor}.bin`);
-            let interactorResult;
-            if (await fileExists(interactorBinPath)) {
-                interactorResult = await this.goJudge.copyInBin(interactorBinPath);
-            } else if (problem.interactor) {
-                const interSrc = await this.problemManager.readInteractorSource(pid, problem.interactor);
-                interactorResult = await this.goJudge.prepareInteractor(interSrc, this.testlibPath);
-            }
-            interactorId = interactorResult.binId || interactorResult.interactorId;
-            interactorCleanup = interactorResult.cleanup;
+
+            // Get cached or compile interactor (with concurrent compile protection)
+            const { interactorId } = await this.getOrCompileInteractor(pid, problem);
 
             // Run all cases and calculate score
             let totalScore = 0;
@@ -376,8 +442,8 @@ export class JudgeEngine {
             this.results.set(sid, err);
             await fs.writeFile(path.join(subDir, 'result.json'), JSON.stringify(err, null, 2));
         } finally {
+            // Only cleanup contestant's program, not the cached interactor
             for (const id of cleanupIds) await this.goJudge.deleteFile(id);
-            if (interactorCleanup) await interactorCleanup();
         }
     }
 

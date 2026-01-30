@@ -156,8 +156,8 @@ export class GoJudgeClient {
             files: [{ content: '' }, { name: 'stdout', max: 1024 * 64 }, { name: 'stderr', max: 1024 * 64 }],
             copyIn: { [srcName]: { content: checkerSourceText } },
             copyOutCached: [outName],
-            cpuLimit: 10e9, 
-            memoryLimit: 512 << 20, 
+            cpuLimit: 30e9,  // 30s (increased from 10s to handle high load)
+            memoryLimit: 512 << 20,
             procLimit: 50,
         });
         if (res.status !== 'Accepted') {
@@ -178,8 +178,8 @@ export class GoJudgeClient {
             files: [{ content: '' }, { name: 'stdout', max: 1024 * 1024 }, { name: 'stderr', max: 1024 * 1024 }],
             copyIn: { [srcName]: { content: interactorSourceText } },
             copyOutCached: [outName],
-            cpuLimit: 10e9, 
-            memoryLimit: 512 << 20, 
+            cpuLimit: 30e9,  // 30s (increased from 10s to handle high load)
+            memoryLimit: 512 << 20,
             procLimit: 128,
         });
         if (res.status !== 'Accepted') {
