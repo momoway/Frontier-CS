@@ -6,13 +6,13 @@ Real-world systems challenges requiring domain expertise in GPU computing, distr
 
 ```bash
 # List all problems
-frontier list
+frontier list research
 
 # Evaluate a solution (requires Docker)
-frontier eval flash_attn <your_solution.py>
+frontier eval research flash_attn <your_solution.py>
 
 # Evaluate multiple problems
-frontier eval --problems flash_attn,cross_entropy <your_solution.py>
+frontier eval research --problems flash_attn,cross_entropy <your_solution.py>
 ```
 
 ## Cloud Evaluation with SkyPilot
@@ -30,7 +30,7 @@ See [SkyPilot docs](https://skypilot.readthedocs.io/en/latest/getting-started/in
 **Usage:**
 
 ```bash
-frontier eval flash_attn <your_solution.py> --skypilot
+frontier eval research flash_attn <your_solution.py> --skypilot
 ```
 
 ## Batch Evaluation
@@ -38,24 +38,24 @@ frontier eval flash_attn <your_solution.py> --skypilot
 Batch evaluation automatically scans `solutions/` and parses problem IDs from filenames:
 
 ```bash
-# Evaluate all solutions (auto-skips completed)
-frontier-eval batch
+# Evaluate all solutions (uses SkyPilot by default, auto-skips completed)
+frontier-eval batch research
 
-# With SkyPilot (cloud VMs)
-frontier-eval batch --skypilot --workers 20 --clusters 4
+# With custom parallelism
+frontier-eval batch research --workers 20 --clusters 4
 
 # Check status
-frontier-eval batch --status
+frontier-eval batch research --status
 
 # Force re-evaluate all
-frontier-eval batch --no-resume
+frontier-eval batch research --no-resume
 
 # Retry failed evaluations
-frontier-eval batch --retry-failed
+frontier-eval batch research --retry-failed
 ```
 
 **Parameters:**
-- `--workers`: Number of parallel workers (default: 1)
+- `--workers`: Number of parallel workers (default: 10)
 - `--clusters`: Number of SkyPilot clusters for load-balancing (default: same as workers, research + skypilot only)
 
 With `--workers 20 --clusters 4`, 20 workers share 4 clusters via load-balancing.

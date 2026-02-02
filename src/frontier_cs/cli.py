@@ -4,26 +4,24 @@ CLI interface for Frontier-CS evaluation.
 
 Usage:
     # Single problem evaluation
-    frontier eval flash_attn solution.py
-    frontier eval --algorithmic 1 solution.cpp
-
-    # Auto-detect problem from filename
-    frontier eval solutions/flash_attn.gpt5.py
+    frontier eval research flash_attn solution.py
+    frontier eval algorithmic 1 solution.cpp
 
     # With SkyPilot
-    frontier eval flash_attn solution.py --skypilot
+    frontier eval research flash_attn solution.py --skypilot
 
     # All problems for a solution
-    frontier eval --all-problems solution.py
+    frontier eval research --all-problems solution.py
 
     # List problems
     frontier list
-    frontier list --algorithmic
+    frontier list research
+    frontier list algorithmic
 
-    # Batch evaluation (scans solutions/ by default)
-    frontier batch
-    frontier batch --solutions-dir path/to/solutions
-    frontier batch --resume --results-dir results/batch1
+    # Batch evaluation
+    frontier batch research
+    frontier batch algorithmic
+    frontier batch research --solutions-dir path/to/solutions
 """
 
 import argparse
@@ -34,30 +32,8 @@ from typing import List, Optional
 
 from .evaluator import FrontierCSEvaluator
 from .runner import EvaluationResult
-from .gen.solution_format import parse_solution_filename
 
 logger = logging.getLogger(__name__)
-
-
-def detect_solution_file(path: Path) -> tuple[bool, Optional[str], Optional[Path]]:
-    """
-    Detect if a path is a solution file with format {problem}.{model}.py.
-
-    Returns:
-        (is_solution, problem, solution_file)
-        - is_solution: True if path matches the solution file format
-        - problem: Problem ID parsed from filename (or None)
-        - solution_file: The solution file Path (or None)
-    """
-    if not path.is_file():
-        return False, None, None
-
-    parsed = parse_solution_filename(path.name)
-    if not parsed:
-        return False, None, None
-
-    problem, _, _ = parsed
-    return True, problem, path
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -74,10 +50,10 @@ Commands:
   show     Show problem statement
 
 Examples:
-  frontier eval flash_attn solution.py
-  frontier eval --algorithmic 1 solution.cpp
-  frontier batch --solutions-dir solutions/
-  frontier list --algorithmic
+  frontier eval research flash_attn solution.py
+  frontier eval algorithmic 1 solution.cpp
+  frontier batch research
+  frontier list algorithmic
         """,
     )
 
@@ -92,28 +68,32 @@ Examples:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Evaluate with problem ID and solution file
-  frontier eval flash_attn solution.py
-  frontier eval --algorithmic 1 solution.cpp
+  # Evaluate a research problem
+  frontier eval research flash_attn solution.py
 
-  # Auto-detect problem from filename
-  frontier eval solutions/flash_attn.gpt5.py
+  # Evaluate an algorithmic problem
+  frontier eval algorithmic 1 solution.cpp
 
   # Evaluate with SkyPilot (cloud)
-  frontier eval flash_attn solution.py --skypilot
+  frontier eval research flash_attn solution.py --skypilot
 
   # Evaluate multiple problems
-  frontier eval --problems flash_attn,cross_entropy solution.py
-  frontier eval --all-problems solution.py
+  frontier eval research --problems flash_attn,cross_entropy solution.py
+  frontier eval research --all-problems solution.py
         """,
     )
 
     # Positional arguments for eval
     eval_parser.add_argument(
+        "track",
+        choices=["research", "algorithmic"],
+        help="Track: research or algorithmic",
+    )
+    eval_parser.add_argument(
         "problem_id",
         nargs="?",
         default=None,
-        help="Problem ID (e.g., flash_attn) or solution file (e.g., flash_attn.gpt5.py)",
+        help="Problem ID (e.g., flash_attn for research, 1 for algorithmic)",
     )
     eval_parser.add_argument(
         "solution",
@@ -124,16 +104,6 @@ Examples:
 
     # Problem selection
     problem_group = eval_parser.add_argument_group("Problem Selection")
-    problem_group.add_argument(
-        "--algorithmic",
-        action="store_true",
-        help="Evaluate algorithmic problem (expects numeric ID)",
-    )
-    problem_group.add_argument(
-        "--research",
-        action="store_true",
-        help="Evaluate research problem (default track)",
-    )
     problem_group.add_argument(
         "--problems",
         type=str,
@@ -227,23 +197,32 @@ Examples:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Evaluate all solutions (scans solutions/ directory)
-  frontier batch
+  # Evaluate research solutions (uses SkyPilot by default)
+  frontier batch research
 
-  # Evaluate from specific solutions directory
-  frontier batch --solutions-dir path/to/solutions
+  # Evaluate algorithmic solutions (uses Docker by default)
+  frontier batch algorithmic
 
-  # Evaluate specific pairs
-  frontier batch --pairs "flash_attn.gpt5.py:flash_attn"
+  # Override default backend
+  frontier batch research --backend docker
+  frontier batch algorithmic --backend skypilot
+
+  # Filter by model or problem
+  frontier batch research --model gpt5.1
+  frontier batch research --problem flash_attn
 
   # Resume interrupted evaluation
-  frontier batch --resume --results-dir results/batch1
+  frontier batch research --resume
 
-  # Check evaluation status
-  frontier batch --status --results-dir results/batch1
-
-Solution files use format: {problem}.{model}.py (e.g., flash_attn.gpt5.py)
+Solution files use format: {problem}/{model}.py (e.g., flash_attn/gpt5.py)
         """,
+    )
+
+    # Track as positional argument
+    batch_parser.add_argument(
+        "track",
+        choices=["research", "algorithmic"],
+        help="Track to evaluate: research (Python, SkyPilot) or algorithmic (C++, Docker)",
     )
 
     # Pairs input (mutually exclusive)
@@ -270,20 +249,27 @@ Solution files use format: {problem}.{model}.py (e.g., flash_attn.gpt5.py)
         help="Problems directory (default: auto-detect from code location)",
     )
 
+    batch_filter = batch_parser.add_argument_group("Filter Options")
+    batch_filter.add_argument(
+        "--model",
+        type=str,
+        help="Filter solutions by model name (e.g., gpt4, claude)",
+    )
+    batch_filter.add_argument(
+        "--problem",
+        type=str,
+        help="Filter solutions by problem name (e.g., flash_attn)",
+    )
+
     batch_output = batch_parser.add_argument_group("Output Options")
     batch_output.add_argument(
         "--results-dir",
         type=Path,
         default=Path("results/batch"),
-        help="Directory for results and state (default: results/batch)",
+        help="Directory for results and state (default: results/batch/{track})",
     )
 
-    batch_track = batch_parser.add_argument_group("Track Selection")
-    batch_track.add_argument(
-        "--algorithmic",
-        action="store_true",
-        help="Evaluate algorithmic track (C++ solutions)",
-    )
+    batch_track = batch_parser.add_argument_group("Track Options")
     batch_track.add_argument(
         "--judge-url",
         type=str,
@@ -293,9 +279,11 @@ Solution files use format: {problem}.{model}.py (e.g., flash_attn.gpt5.py)
 
     batch_backend = batch_parser.add_argument_group("Backend Options")
     batch_backend.add_argument(
-        "--skypilot",
-        action="store_true",
-        help="Use SkyPilot for cloud evaluation",
+        "--backend",
+        type=str,
+        choices=["docker", "skypilot"],
+        help="Evaluation backend: docker (local) or skypilot (cloud). "
+             "Default: skypilot for research, docker for algorithmic",
     )
     batch_backend.add_argument(
         "--clusters",
@@ -305,8 +293,8 @@ Solution files use format: {problem}.{model}.py (e.g., flash_attn.gpt5.py)
     batch_backend.add_argument(
         "--workers",
         type=int,
-        default=1,
-        help="Number of parallel workers/concurrent evaluations (default: 1)",
+        default=10,
+        help="Number of parallel workers/concurrent evaluations (default: 10)",
     )
     batch_backend.add_argument(
         "--idle-timeout",
@@ -378,14 +366,10 @@ Solution files use format: {problem}.{model}.py (e.g., flash_attn.gpt5.py)
         help="List available problems",
     )
     list_parser.add_argument(
-        "--algorithmic",
-        action="store_true",
-        help="List algorithmic problems only",
-    )
-    list_parser.add_argument(
-        "--research",
-        action="store_true",
-        help="List research problems only",
+        "track",
+        nargs="?",
+        choices=["research", "algorithmic"],
+        help="Track to list (default: both)",
     )
 
     # ==========================================================================
@@ -396,13 +380,13 @@ Solution files use format: {problem}.{model}.py (e.g., flash_attn.gpt5.py)
         help="Show problem statement",
     )
     show_parser.add_argument(
-        "problem_id",
-        help="Problem ID to show",
+        "track",
+        choices=["research", "algorithmic"],
+        help="Track: research or algorithmic",
     )
     show_parser.add_argument(
-        "--algorithmic",
-        action="store_true",
-        help="Show algorithmic problem",
+        "problem_id",
+        help="Problem ID to show",
     )
 
     return parser
@@ -486,6 +470,8 @@ def get_problem_ids(
 
 def run_batch(args: argparse.Namespace) -> int:
     """Run batch evaluation command."""
+    import signal
+    import atexit
     from .batch import BatchEvaluator
     from .batch.pair import Pair
 
@@ -495,10 +481,37 @@ def run_batch(args: argparse.Namespace) -> int:
         format="[%(levelname)s] %(message)s",
     )
 
-    # Determine backend
-    backend = "skypilot" if args.skypilot else "docker"
+    # Track batch evaluator for cleanup on interrupt
+    batch_evaluator_ref: List = []  # Use list to allow modification in nested function
 
-    track = "algorithmic" if getattr(args, "algorithmic", False) else "research"
+    def cleanup_on_exit():
+        """Cleanup SkyPilot clusters on exit."""
+        if batch_evaluator_ref:
+            batch = batch_evaluator_ref[0]
+            if hasattr(batch, '_cluster_names') and batch._cluster_names and not batch.keep_cluster:
+                print("\nCleaning up SkyPilot clusters...")
+                batch._cleanup_cluster_pool()
+
+    def signal_handler(signum, frame):
+        """Handle Ctrl+C by cleaning up and exiting."""
+        print("\n\nInterrupted! Cleaning up...")
+        cleanup_on_exit()
+        sys.exit(1)
+
+    # Register cleanup handlers
+    atexit.register(cleanup_on_exit)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Determine backend
+    track = args.track
+
+    # Determine backend: explicit --backend, or default based on track
+    if args.backend:
+        backend = args.backend
+    elif track == "research":
+        backend = "skypilot"
+    else:
+        backend = "docker"
     bucket_url = getattr(args, "bucket_url", None)
     keep_cluster = getattr(args, "keep_cluster", False)
     idle_timeout = None if keep_cluster else getattr(args, "idle_timeout", 10)
@@ -508,12 +521,22 @@ def run_batch(args: argparse.Namespace) -> int:
     workers = args.workers
     clusters = args.clusters  # None means same as workers
 
-    # Create batch evaluator
+    # Set default paths based on track
+    base_dir = Path(__file__).parents[2]  # src/frontier_cs/cli.py -> repo root
+    solutions_dir = getattr(args, "solutions_dir", None)
+    if solutions_dir is None:
+        solutions_dir = base_dir / track / "solutions"
     problems_dir = getattr(args, "problems_dir", None)
+    if problems_dir is None:
+        problems_dir = base_dir / track / "problems"
+
+    # Results dir: always add track subdir
+    results_dir = args.results_dir / track
     timeout = getattr(args, "timeout", 1000)
     # Build kwargs, only include timeout if explicitly set (otherwise use BatchEvaluator default)
     batch_kwargs = dict(
-        results_dir=args.results_dir,
+        results_dir=results_dir,
+        solutions_dir=solutions_dir,
         problems_dir=problems_dir,
         backend=backend,
         track=track,
@@ -527,6 +550,7 @@ def run_batch(args: argparse.Namespace) -> int:
     )
 
     batch = BatchEvaluator(**batch_kwargs)
+    batch_evaluator_ref.append(batch)  # Register for cleanup on interrupt
 
     # Handle status command
     if args.status:
@@ -555,7 +579,7 @@ def run_batch(args: argparse.Namespace) -> int:
         batch._export_all_results()
         status = batch.get_status()
         print(f"\nStatus: {status['completed']}/{status['total_pairs']} completed")
-        print(f"Results exported to {args.results_dir}")
+        print(f"Results exported to {results_dir}")
         return 0
 
     # Handle report command
@@ -585,7 +609,6 @@ def run_batch(args: argparse.Namespace) -> int:
             print(f"  {problem}: {stats['successful']}/{stats['total']} successful, avg={avg}")
 
         # Also export CSV files
-        results_dir = Path(args.results_dir)
         batch.state.export_aggregated_csv(
             results_dir / "by_model.csv", by="model",
             valid_problems=valid_problems if valid_problems else None
@@ -606,7 +629,7 @@ def run_batch(args: argparse.Namespace) -> int:
     # Handle retry-failed command
     # Retries both error/timeout AND score=0 pairs (can't distinguish real 0 from failure)
     if args.retry_failed:
-        print(f"\nRetrying failed pairs from {args.results_dir}")
+        print(f"\nRetrying failed pairs from {results_dir}")
         state = batch.retry_failed()
         print(f"\nComplete: {state.success_count}/{state.total_pairs} successful")
         # Return 0 even if some evaluations failed - individual errors are expected
@@ -614,7 +637,7 @@ def run_batch(args: argparse.Namespace) -> int:
 
     # Handle resume command
     if args.resume:
-        print(f"\nResuming batch evaluation from {args.results_dir}")
+        print(f"\nResuming batch evaluation from {results_dir}")
         state = batch.resume()
         print(f"\nComplete: {state.success_count}/{state.total_pairs} successful")
         # Return 0 even if some evaluations failed - individual errors are expected
@@ -653,30 +676,51 @@ def run_batch(args: argparse.Namespace) -> int:
         # Mode: scan solutions directory (default)
         from .batch import scan_solutions_dir
 
-        solutions_dir = args.solutions_dir
-        if solutions_dir is None:
-            # Use base_dir from batch evaluator
-            base_dir = Path(__file__).parents[2]  # src/frontier_cs/cli.py -> repo root
-            track_dir = "algorithmic" if track == "algorithmic" else "research"
-            solutions_dir = base_dir / track_dir / "solutions"
-
         if not solutions_dir.is_dir():
-            track_dir = "algorithmic" if track == "algorithmic" else "research"
-            print(f"Error: No solutions directory found. Expected {track_dir}/solutions/", file=sys.stderr)
-            print("Use --solutions-dir or --pairs-file to specify", file=sys.stderr)
+            print(f"Error: No solutions directory found: {solutions_dir}", file=sys.stderr)
+            print("Use --solutions-dir to specify", file=sys.stderr)
             return 1
 
-        # Determine problems_dir for validation
-        probs_dir = problems_dir
-        if probs_dir is None:
-            base_dir = Path(__file__).parents[2]
-            track_dir = "algorithmic" if track == "algorithmic" else "research"
-            probs_dir = base_dir / track_dir / "problems"
-
-        pairs = scan_solutions_dir(solutions_dir, problems_dir=probs_dir)
+        pairs = scan_solutions_dir(solutions_dir, problems_dir=problems_dir)
         if not pairs:
             print(f"Error: No solution files found in {solutions_dir}", file=sys.stderr)
             return 1
+
+        # Apply filters
+        model_filter = getattr(args, "model", None)
+        problem_filter = getattr(args, "problem", None)
+
+        if model_filter or problem_filter:
+            from .gen.solution_format import parse_solution_filename
+
+            filtered_pairs = []
+            for pair in pairs:
+                # Filter by problem
+                if problem_filter and pair.problem != problem_filter:
+                    continue
+
+                # Filter by model
+                if model_filter:
+                    filename = Path(pair.solution).name
+                    parsed = parse_solution_filename(filename)
+                    if parsed:
+                        model_name, _, _ = parsed
+                        if model_name != model_filter:
+                            continue
+                    else:
+                        continue
+
+                filtered_pairs.append(pair)
+
+            pairs = filtered_pairs
+            if not pairs:
+                filter_desc = []
+                if model_filter:
+                    filter_desc.append(f"model={model_filter}")
+                if problem_filter:
+                    filter_desc.append(f"problem={problem_filter}")
+                print(f"Error: No solutions found matching filters: {', '.join(filter_desc)}", file=sys.stderr)
+                return 1
 
         backend_info = f", backend={backend}" if backend != "docker" else ""
         print(f"\nBatch evaluation ({track}{backend_info}): {len(pairs)} solutions from {solutions_dir}")
@@ -689,7 +733,7 @@ def run_batch(args: argparse.Namespace) -> int:
     print(f"Total: {state.total_pairs}")
     print(f"Successful: {state.success_count}")
     print(f"Errors: {state.error_count}")
-    print(f"Results saved to: {args.results_dir}")
+    print(f"Results saved to: {results_dir}")
     print(f"\nOutput files:")
     print(f"  - results.csv: All results")
     print(f"  - by_model.csv: Aggregated by model")
@@ -705,7 +749,7 @@ def run_list(args: argparse.Namespace) -> int:
     """Run list command."""
     evaluator = FrontierCSEvaluator(backend="docker")
 
-    if args.algorithmic:
+    if args.track == "algorithmic":
         # Only list algorithmic problems in compact format
         problems = evaluator.list_problems("algorithmic")
         print(f"\nAlgorithmic Problems ({len(problems)} total):\n")
@@ -713,7 +757,7 @@ def run_list(args: argparse.Namespace) -> int:
         for i in range(0, len(problems), ids_per_line):
             line_ids = problems[i:i+ids_per_line]
             print("  " + ", ".join(line_ids))
-    elif args.research:
+    elif args.track == "research":
         # Only list research problems
         all_research = evaluator.list_problems("research")
         research_problems = [p for p in all_research if not p.startswith("algorithmic/")]
@@ -721,7 +765,7 @@ def run_list(args: argparse.Namespace) -> int:
         for p in research_problems:
             print(f"  {p}")
     else:
-        # List both tracks
+        # List both tracks (no track specified)
         all_research = evaluator.list_problems("research")
         research_problems = [p for p in all_research if not p.startswith("algorithmic/")]
         print(f"\nResearch Problems ({len(research_problems)} total):\n")
@@ -740,8 +784,7 @@ def run_list(args: argparse.Namespace) -> int:
 def run_show(args: argparse.Namespace) -> int:
     """Run show command."""
     evaluator = FrontierCSEvaluator(backend="docker")
-    track = "algorithmic" if args.algorithmic else "research"
-    statement = evaluator.get_problem_statement(track, args.problem_id)
+    statement = evaluator.get_problem_statement(args.track, args.problem_id)
     if statement:
         print(statement)
     else:
@@ -752,8 +795,7 @@ def run_show(args: argparse.Namespace) -> int:
 
 def run_eval(args: argparse.Namespace) -> int:
     """Run eval command."""
-    # Determine track
-    track = "algorithmic" if args.algorithmic else "research"
+    track = args.track
 
     # Create evaluator
     backend = "skypilot" if args.skypilot else "docker"
@@ -769,31 +811,8 @@ def run_eval(args: argparse.Namespace) -> int:
         timeout=timeout,
     )
 
-    # Auto-detect solution file format: {problem}.{model}.py
-    solution_file_mode = False
-    detected_problem = None
-    detected_solution_file = None
-
-    if args.problem_id:
-        candidate = Path(args.problem_id)
-        is_solution, detected_problem, detected_solution_file = detect_solution_file(candidate)
-        if is_solution:
-            solution_file_mode = True
-            if not args.quiet:
-                print(f"Detected solution file: {candidate}")
-                print(f"  Problem (from filename): {detected_problem}")
-
     # Get problem IDs
-    if solution_file_mode:
-        if args.problems:
-            problem_ids = [p.strip() for p in args.problems.split(",")]
-        elif detected_problem:
-            problem_ids = [detected_problem]
-        else:
-            print("Error: Could not parse problem from filename", file=sys.stderr)
-            return 1
-    else:
-        problem_ids = get_problem_ids(args, evaluator, track)
+    problem_ids = get_problem_ids(args, evaluator, track)
 
     if not problem_ids:
         print("Error: No problems specified. Use --help for usage.", file=sys.stderr)
@@ -802,8 +821,6 @@ def run_eval(args: argparse.Namespace) -> int:
     # Get solution code
     if args.code:
         code = args.code
-    elif solution_file_mode and detected_solution_file:
-        code = detected_solution_file.read_text(encoding="utf-8")
     elif args.solution:
         solution_path = Path(args.solution)
         if not solution_path.exists():
