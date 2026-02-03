@@ -1,5 +1,7 @@
 ## FrontierCS - Algorithmic Problems
 
+> For complete model evaluation workflow (prepare solutions, run batch evaluation, submit to leaderboard), see [SUBMIT.md](../SUBMIT.md).
+
 > **Note:** We currently support C++17 only for algorithmic problem solutions.
 
 ### Problem Structure
@@ -59,10 +61,10 @@ print(f"Score (unbounded): {result.score_unbounded}")
 
 ```bash
 # Evaluate a solution
-frontier-eval algorithmic 1 solution.cpp
+frontier eval algorithmic 1 solution.cpp
 
 # Get unbounded score
-frontier-eval algorithmic 1 solution.cpp --unbounded
+frontier eval algorithmic 1 solution.cpp --unbounded
 ```
 
 ### Batch Evaluation
@@ -93,17 +95,11 @@ sky launch -c algo-judge algorithmic/sky-judge.yaml --idle-minutes-to-autostop 1
 frontier eval algorithmic 1 solution.cpp --judge-url http://$(sky status --ip algo-judge):8081
 ```
 
-### Customized Problems
+### Creating Problems
 
-1. Create `problems/{id}/` directory
-2. Add required files:
-   - `statement.txt`: Problem description
-   - `config.yaml`: Limits and test count
-   - `testdata/`: Input/output files
-   - `chk.cc` or `interactor.cc`: Checker/interactor
+> For contributing problems to Frontier-CS (detailed file formats, CI requirements), see [CONTRIBUTING.md](../CONTRIBUTING.md#algorithmic-problems).
 
-3. Restart judge to pick up new problems
-
+For local testing, create `problems/{id}/` with required files and restart the judge.
 
 ### Judge Server Configuration
 
@@ -118,7 +114,7 @@ checker: chk.cc         # or interactor: interactor.cc
 
 #### docker-compose.yml
 
-The judge server will be auto-started when running `frontier-eval algorithmic`.
+The judge server will be auto-started when running `frontier eval algorithmic ...`.
 
 ```yaml
 environment:

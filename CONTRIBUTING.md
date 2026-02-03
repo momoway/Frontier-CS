@@ -152,9 +152,19 @@ class Solution:
 
 ### Evaluation Flow
 
+Inside the Docker container, the execution order is:
+
 ```
-config.yaml → set_up_env.sh → solve.sh → evaluate.sh → evaluator.py → score (0-100)
+1. Copy solution.py      →  /work/execution_env/solution_env/
+2. Install curl/uv       →  Framework auto-installs if missing
+3. Install Docker CLI    →  If dind: true in config.yaml
+4. uv sync               →  Auto-install deps from uv_project
+5. set_up_env.sh         →  Dataset preparation (if exists)
+6. evaluate.sh           →  Check files, run evaluator
+7. evaluator.py          →  Load Solution.solve(), run benchmark, print score
 ```
+
+The final score is extracted from the last numeric line of stdout.
 
 ### Step by Step
 #### 1. Create Problem Directory
@@ -175,13 +185,57 @@ datasets: []               # Optional: dataset URLs
 
 runtime:
   timeout_seconds: 1800    # Evaluation timeout
-  requires_gpu: true       # GPU requirement
+  environment: "CUDA 12.2, Python 3.11, PyTorch 2.0+"  # Description for LLM prompts, used by generate_solutions.py
+  docker:
+    image: andylizf/triton-tlx:tlx-nv-cu122  # Docker image
+    gpu: true              # GPU requirement
+    dind: false            # Set true for Docker-in-Docker (auto-installs Docker CLI)
   resources:               # SkyPilot resources
     accelerators: "L4:1"
     cpus: "8+"
     memory: "32+"
-  environment: "CUDA 12.2, Python 3.11, PyTorch 2.0+"
 ```
+
+The framework automatically:
+- Installs dependencies from `uv_project` via `uv sync`
+- Installs Docker CLI inside the container when `dind: true`
+
+#### Protecting Pre-installed Packages (uv_overrides.txt)
+
+Many Docker images come with pre-installed, customized versions of packages like `triton` or `torch`. If your `pyproject.toml` lists these as dependencies, `uv` will replace them with standard versions, breaking GPU support.
+
+**Solution:** Create `resources/uv_overrides.txt` to skip pre-installed packages:
+
+```
+triton ; sys_platform == 'never'
+torch ; sys_platform == 'never'
+```
+
+The `sys_platform == 'never'` condition is always false, so `uv` skips these packages entirely.
+
+**Example:** Problem using `andylizf/triton-tlx` image with custom Triton:
+
+```
+resources/
+├── pyproject.toml      # Lists triton>=2.1.0 as dependency
+├── uv_overrides.txt    # Prevents triton from being replaced
+└── benchmark.py
+```
+
+Without `uv_overrides.txt`:
+```
+- triton==3.4.0+gitc95fb48c (uninstalled!)
+~ triton==3.1.0 (replaced with standard version)
+→ RuntimeError: 0 active drivers
+```
+
+With `uv_overrides.txt`:
+```
+Triton version: 3.4.0 (kept original)
+→ Works correctly
+```
+
+**When to use:** Always add `uv_overrides.txt` when your Docker image has custom-built packages (especially Triton, PyTorch, or CUDA-related libraries).
 
 #### 3. Create Evaluation Scripts
 
@@ -287,10 +341,10 @@ Before submitting a PR, test your reference solution locally:
 
 ```bash
 # Algorithmic
-frontier eval --algorithmic {id} algorithmic/problems/{id}/reference.cpp
+frontier eval algorithmic {id} algorithmic/problems/{id}/reference.cpp
 
 # Research
-frontier eval {name} research/problems/{name}/reference.py
+frontier eval research {name} research/problems/{name}/reference.py
 ```
 
 ## Contact

@@ -116,10 +116,10 @@ frontier eval algorithmic 0 <your_solution.cpp>
 # List all problems
 frontier list research
 
-# Evaluate a generated solution locally for flash_attn problem (requires Docker)
+# Evaluate a solution locally (uses Docker by default)
 frontier eval research flash_attn <your_solution.py>
 
-# Evaluate on cloud (requires SkyPilot)
+# Evaluate on cloud with SkyPilot
 frontier eval research flash_attn <your_solution.py> --skypilot
 ```
 
@@ -128,10 +128,10 @@ See [research/README.md](research/README.md) for full documentation.
 ### Algorithmic Problems
 
 ```bash
-# Evaluate a solution locally (requires Docker)
+# Evaluate a solution locally (uses Docker by default)
 frontier eval algorithmic 1 <your_solution.cpp>
 
-# Evaluate on cloud (requires SkyPilot)
+# Evaluate on cloud with SkyPilot
 frontier eval algorithmic 1 <your_solution.cpp> --skypilot
 ```
 
@@ -228,9 +228,9 @@ See `--help` for all options.
 > **Note:** For maintainers, `./scripts/run_eval.sh` is used for full evaluation with private test cases.
 
 
-## Submitting Results
+## Evaluating and Submitting Results
 
-Reference solutions and full test cases are withheld. We release partial test cases so you can develop and debug locally. For full evaluation and leaderboard inclusion, please follow the instructions in [SUBMIT.md](SUBMIT.md) and submit your solutions to qmang@berkeley.edu, wenhao.chai@princeton.edu, huanzhimao@berkeley.edu, or zhifei.li@berkeley.edu.
+Reference solutions and full test cases are withheld. We release partial test cases so you can develop and debug locally. For the complete evaluation workflow (preparing solutions, running batch evaluation, viewing results, and submitting to the leaderboard), see [SUBMIT.md](SUBMIT.md) and submit your solutions to qmang@berkeley.edu, wenhao.chai@princeton.edu, huanzhimao@berkeley.edu, or zhifei.li@berkeley.edu.
 
 Questions? Join our [Discord](https://discord.gg/k4hd2nU4UE)
 
