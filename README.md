@@ -237,6 +237,16 @@ Questions? Join our [Discord](https://discord.gg/k4hd2nU4UE)
 
 Some problems are adapted from [ALE-bench](https://github.com/SakanaAI/ALE-Bench) and [AI-Driven Research for Systems (ADRS)](https://ucbskyadrs.github.io/).
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=FrontierCS%2FFrontier-CS&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=FrontierCS/Frontier-CS&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=FrontierCS/Frontier-CS&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=FrontierCS/Frontier-CS&type=date&legend=top-left" />
+ </picture>
+</a>
+
 ## Citing Us
 
 If you use Frontier-CS in your research, please cite:
