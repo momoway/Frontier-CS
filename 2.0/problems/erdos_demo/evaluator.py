@@ -1,4 +1,4 @@
-"""Evaluator for the Erdos unit distance 2.0 problem."""
+"""Evaluator for the Erdos unit distance demo problem."""
 
 from __future__ import annotations
 
@@ -15,13 +15,13 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-N_POINTS = 65536
+N_POINTS = 10
 BASELINE_EDGES = N_POINTS
-TIMEOUT_SECONDS = 10800
+TIMEOUT_SECONDS = 300
 UNIT_DISTANCE = 1.0
-DISTANCE_REL_TOL = 1e-10
-DISTANCE_ABS_TOL = 1e-10
-MIN_SEPARATION = 1e-3
+DISTANCE_REL_TOL = 1e-7
+DISTANCE_ABS_TOL = 1e-9
+MIN_SEPARATION = 1e-6
 
 
 def _protect_evaluator_source() -> None:

@@ -28,18 +28,29 @@ uv run frontier-cs-2-0 \
   --overwrite
 ```
 
+Generate only the small Erdos demo task:
+
+```bash
+uv run frontier-cs-2-0 \
+  --source ../.. \
+  --output-dir ../../datasets/frontier-cs-2.0 \
+  --task-ids erdos_demo \
+  --overwrite
+```
+
 ## Run with Harbor
 
 ```bash
 uv run harbor run -p datasets/frontier-cs-2.0
 uv run harbor trial start -p datasets/frontier-cs-2.0/frontier-cs-2-0-erdos-unit-distance
+uv run harbor trial start -p datasets/frontier-cs-2.0/frontier-cs-2-0-erdos-demo
 ```
 
 ## Task Contract
 
-The agent works in `/app` and must create `/app/solution.py`. The verifier runs
-the original Frontier-CS `2.0` evaluator and writes a normalized reward in
-`/logs/verifier/reward.txt`.
+The agent works in `/app` and must create `/app/solution.py`. The final
+verifier runs the original Frontier-CS `2.0` evaluator and writes a normalized
+reward in `/logs/verifier/reward.txt`.
 
 During the trial, the agent can call:
 
@@ -47,9 +58,10 @@ During the trial, the agent can call:
 bash /app/submit.sh
 ```
 
-This runs the same evaluator against the current `/app/solution.py`, prints the
-score and feedback, and records each attempt in
-`/logs/agent/submissions.jsonl`. The final verifier mirrors that log to
+This submits the current `/app/solution.py` to a black-box judge service,
+prints the score and feedback, and records each attempt in
+`/logs/agent/submissions.jsonl`. The evaluator source is not mounted into the
+agent workspace. The final verifier mirrors that log to
 `/logs/verifier/submissions.jsonl` for process-reward analysis. The reported
 reward is the maximum of the final `/app/solution.py` score and the best
 successful iterative submission, so a timed-out agent can keep its best
