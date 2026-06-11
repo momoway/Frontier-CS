@@ -30,7 +30,7 @@ judge/agent images as `task_config.json`.
 | Decoding | `temperature = 0`, `max_completion_tokens = 2048` | greedy, deterministic |
 | `step_limit` | 50 | per-instance agent steps |
 | Accuracy (agent role) | `patch_validity` | cheap proxy for iterative feedback |
-| Accuracy (final role) | `resolve_rate` | SWE-bench resolve; falls back to `patch_validity` if the judge has no Docker-in-Docker |
+| Accuracy (final role) | `resolve_rate` | **real** SWE-bench resolved fraction — judge mounts the host Docker socket (DooD) and runs the swebench harness against prebuilt testbed images; falls back to `patch_validity` only if no Docker daemon is reachable |
 | `accuracy_tolerance` | `0.05` | ≤5% relative drop ⇒ no penalty |
 | `correctness_smoke_prompts` | 8 | greedy outputs must match baseline token-for-token |
 | Build timeout / per-instance timeout | 5400 s / 1200 s | |
@@ -214,6 +214,26 @@ Both the **agent's async public test** (`harbor/app/public_test.py` →
 `serving_eval.run_public_test`) and the **judge's measurement**
 (`evaluator.py` → `serving_eval.run_measurement`) drive Modal the same way, so
 the iterative feedback the agent sees is the same kind the judge grades on.
+
+### Real resolve-rate (Docker-out-of-Docker) — separate from the GPU
+
+Accuracy is *task-solving* quality, not a GPU concern: the **CPU-side** SWE-bench
+evaluation runs locally, not on Modal. For the final role the judge mounts the
+**host Docker socket** (`/var/run/docker.sock`) so it can run two things against
+real per-instance testbeds:
+- the **workload sandbox** (`serving_eval/sandbox.py` `DockerSandbox`) — the
+  agent's shell commands execute inside `swebench/sweb.eval.x86_64.<instance>`
+  at `/testbed` (network-isolated), instead of the `LocalSandbox` fallback;
+- the **resolve harness** (`serving_eval/accuracy.py` → `swebench.harness.
+  run_evaluation`, `namespace="swebench"`, `modal=False`) — pulls the prebuilt
+  eval image, applies the model's patch, runs the repo's `FAIL_TO_PASS` tests,
+  and reports the **resolved fraction** (`proxy_used=False`).
+
+These testbed containers run as **siblings on the host daemon**, fully separate
+from the Modal L40S that serves the model. Cost note: each eval image is
+~2–8 GB and a resolve takes ~2 min/instance, so a full `eval_slice 0:30`
+resolve pulls ~100+ GB of images. Without the socket (e.g. local CI) the judge
+auto-degrades to `patch_validity` and flags `proxy_used=True`.
 
 ---
 

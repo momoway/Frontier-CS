@@ -16,6 +16,7 @@ Two modes, both comparable across baseline and patched runs:
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -116,10 +117,20 @@ def resolve_rate(
         if missing_required:
             return patch_validity_rate(results), True
 
+        # swebench writes its summary report (<model>.<run_id>.json) and logs to
+        # the process CWD, so run it with CWD pinned to our temp dir to collect
+        # everything in one place for _read_resolved_count.
+        prev_cwd = os.getcwd()
         try:
+            os.chdir(tmp)
             run_eval_main(**call_kwargs)
         except Exception:
             return patch_validity_rate(results), True
+        finally:
+            try:
+                os.chdir(prev_cwd)
+            except Exception:
+                pass
 
         resolved = _read_resolved_count(Path(tmp), settings.model)
         if resolved is None:
