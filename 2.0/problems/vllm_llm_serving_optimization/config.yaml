@@ -1,0 +1,79 @@
+tag: systems
+runtime:
+  language: python
+  timeout_seconds: 21600
+  environment: "Patched vLLM (v0.11.0) source; Modal L40S GPU serving Llama-3.1-8B-Instruct; mini-swe-agent SWE-bench workload; latency-primary judge with accuracy guardrail"
+  apt_packages:
+    - bash
+    - ca-certificates
+    - curl
+    - git
+    - python3
+    - python3-pip
+  judge_apt_packages:
+    - bash
+    - ca-certificates
+    - curl
+    - git
+    - python3
+    - python3-pip
+  judge_pip_packages:
+    - modal
+    - openai
+    - datasets
+    - huggingface-hub
+  docker:
+    # Experimental local images. Build them with
+    # 2.0/problems/vllm_llm_serving_optimization/docker/build_images.sh before running a
+    # local Harbor trial. Both images need a clean upstream vLLM v0.11.0 checkout
+    # (NOT the continuum fork). The judge image additionally vendors the
+    # mini-swe-agent harness and the latency/accuracy scorer.
+    image: frontiercs/vllm-serving-optimization-agent:experimental-v0.11.0
+    judge_image: frontiercs/vllm-serving-optimization-judge:experimental-v0.11.0
+environment:
+  cpus: 8
+  memory_mb: 32768
+  storage_mb: 65536
+  build_timeout_seconds: 7200
+evaluation:
+  # Model + accelerator served on Modal (one L40S per environment).
+  model: meta-llama/Llama-3.1-8B-Instruct
+  gpu: L40S
+  # Workload: mini-swe-agent on SWE-bench Verified (split test).
+  dataset: princeton-nlp/SWE-bench_Verified
+  dataset_split: test
+  # Iterative (agent-role) public test: a strict subset of the final eval set.
+  public_slice: "0:5"
+  # Final (verifier-role) evaluation: superset of the public slice.
+  eval_slice: "0:30"
+  # Poisson arrival workload (jobs/second). Mirrors a realistic serving load.
+  arrival_mode: jps
+  jps: 0.5
+  workers: 8
+  step_limit: 50
+  temperature: 0.0
+  max_completion_tokens: 2048
+  # Latency aggregation + scoring.
+  latency_metric: mean_e2e_seconds
+  # Accuracy guardrail. Within `accuracy_tolerance` relative drop of baseline =>
+  # no penalty; beyond it the score decays inverse-proportionally.
+  accuracy_tolerance: 0.05
+  agent_accuracy_mode: patch_validity
+  final_accuracy_mode: resolve_rate
+  # Greedy-output correctness smoke (a handful of fixed prompts must match the
+  # baseline token-for-token at temperature 0 before timing is considered).
+  correctness_smoke_prompts: 8
+  # Modal serving knobs.
+  modal_scaledown_seconds: 900
+  modal_startup_timeout_seconds: 1200
+  server_health_timeout_seconds: 1800
+  # Per-phase wall-clock budgets (seconds).
+  build_timeout_seconds: 5400
+  instance_timeout_seconds: 1200
+  # Use a baseline (vanilla vLLM) cached in the judge image when available,
+  # otherwise the judge serves vanilla once and caches it for the trial.
+  baseline_cache_path: /opt/vllm-baseline/baseline_metrics.json
+submission:
+  kind: file
+  path: /app/solution.patch
+  max_queue_size: 2
